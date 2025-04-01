@@ -311,7 +311,7 @@ export const uploadMedia = asyncErrorHandler(async (req, res, next) => {
 
 // Search Media API
 export const searchMedia = asyncErrorHandler(async (req, res, next) => {
-    const { query, type, genre, language, year, limit = 20 } = req.query;
+    const { query, type, genre, language, year, page = 1, limit = 20 } = req.query;
     
     try {
         // Build search criteria
@@ -329,14 +329,23 @@ export const searchMedia = asyncErrorHandler(async (req, res, next) => {
         }
         
         // Add filters
-        if (type) searchCriteria.type = type;
-        if (genre) searchCriteria.genres = { $in: [genre] };
-        if (language) searchCriteria.languages = { $in: [language] };
+        if (type) searchCriteria.type = { $regex: new RegExp(type, 'i') };
+        if (genre) searchCriteria.genres = { $in: [new RegExp(genre, 'i')] };
+        if (language) searchCriteria.languages = { $in: [new RegExp(language, 'i')] };
         if (year) searchCriteria.year = parseInt(year);
         
-        // Execute search
+        // Calculate pagination
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 20;
+        const skip = (pageNum - 1) * limitNum;
+        
+        // Count total results
+        const totalCount = await Media.countDocuments(searchCriteria);
+        
+        // Execute search with pagination
         const results = await Media.find(searchCriteria)
-            .limit(parseInt(limit))
+            .skip(skip)
+            .limit(limitNum)
             .sort({ 'imdb.rating': -1 })
             .lean();
             
@@ -347,7 +356,7 @@ export const searchMedia = asyncErrorHandler(async (req, res, next) => {
             relatedMedia = await Media.find({
                 $and: [
                     { _id: { $nin: results.map(item => item._id) } },
-                    type ? { type } : {}
+                    type ? { type: { $regex: new RegExp(type, 'i') } } : {}
                 ]
             })
             .sort({ 'imdb.rating': -1 })
@@ -357,11 +366,14 @@ export const searchMedia = asyncErrorHandler(async (req, res, next) => {
         
         res.status(200).json({
             success: true,
-            count: results.length,
+            count: totalCount,
+            page: pageNum,
+            totalPages: Math.ceil(totalCount / limitNum),
             data: results,
             related: relatedMedia
         });
     } catch (error) {
+        console.error('Search error:', error);
         return next(new ErrorHandler(500, error.message));
     }
 });
