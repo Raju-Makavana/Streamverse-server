@@ -21,7 +21,7 @@ const createSessionConfig = (name, prefix = '') => {
       httpOnly: true,
       secure: getEnvConfig.get('nodeEnv') === 'production',
       sameSite: getEnvConfig.get('nodeEnv') === 'production' ? 'none' : 'lax',
-      domain: getEnvConfig.get('nodeEnv') === 'production' ? getEnvConfig.get('domain') : undefined,
+      // domain: getEnvConfig.get('nodeEnv') === 'production' ? getEnvConfig.get('domain') : undefined,
       maxAge: getEnvConfig.get('cookieExpire') * 24 * 60 * 60 * 1000,
     },
   });
