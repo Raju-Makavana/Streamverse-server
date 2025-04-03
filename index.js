@@ -95,6 +95,10 @@ app.get(
   })
 );
 
+app.get('/health', (req, res) => {
+    res.status(200).send("Server is running");
+});
+
 // Start the server and listen for incoming requests on the specified port
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
